@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { searchAPI } from '../utils/api';
+import { searchAPI, registerAPI } from '../utils/api';
 
 function SearchResults() {
   const [searchQuery, setSearchQuery] = useState('');
