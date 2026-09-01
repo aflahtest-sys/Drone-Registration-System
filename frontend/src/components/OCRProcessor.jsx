@@ -26,7 +26,7 @@ function OCRProcessor({ photo, onExtraction }) {
       // Simple parsing - extract name, ID, and date patterns
       const nameMatch = text.match(/(?:name|name:)\s*([A-Za-z\s]+)/i);
       const idMatch = text.match(/(?:id|id:|number)\s*(\d+)/i);
-      const dateMatch = text.match(/(\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4})/);
+      const dateMatch = text.match(/(\d{1,2}[-/]\d{1,2}[-/]\d{2,4})/);
 
       setEditedName(nameMatch ? nameMatch[1].trim() : '');
       setEditedId(idMatch ? idMatch[1].trim() : '');

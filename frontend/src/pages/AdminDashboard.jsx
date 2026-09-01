@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { adminAPI, registerAPI } from '../utils/api';
+import React, { useState, useEffect, useCallback } from 'react';
+import { adminAPI } from '../utils/api';
 
 function AdminDashboard() {
   const [stats, setStats] = useState(null);
@@ -11,11 +11,7 @@ function AdminDashboard() {
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [showModal, setShowModal] = useState(false);
 
-  useEffect(() => {
-    fetchData();
-  }, [currentPage, statusFilter]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     setError('');
 
@@ -32,7 +28,11 @@ function AdminDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, statusFilter]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const handleStatusChange = async (recordId, newStatus) => {
     try {

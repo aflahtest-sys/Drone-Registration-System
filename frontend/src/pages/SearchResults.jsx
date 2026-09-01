@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { searchAPI, registerAPI } from '../utils/api';
+import React, { useState } from 'react';
+import { searchAPI } from '../utils/api';
 
 function SearchResults() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -55,17 +55,11 @@ function SearchResults() {
     setShowModal(true);
   };
 
-  const handleDownloadPDF = async (recordId) => {
-    try {
-      const response = await registerAPI.getById(recordId);
-      // Create a blob from the PDF (if it's stored in the database)
-      const link = document.createElement('a');
-      link.href = `${process.env.REACT_APP_API_URL}/register/${recordId}/pdf`;
-      link.download = `registration-${recordId}.pdf`;
-      link.click();
-    } catch (err) {
-      alert('Failed to download PDF');
-    }
+  const handleDownloadPDF = (recordId) => {
+    const link = document.createElement('a');
+    link.href = `${process.env.REACT_APP_API_URL}/register/${recordId}/pdf`;
+    link.download = `registration-${recordId}.pdf`;
+    link.click();
   };
 
   return (
