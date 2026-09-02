@@ -1,6 +1,12 @@
 import React, { useState } from 'react';
 import { searchAPI } from '../utils/api';
 
+const STATUS_COLORS = {
+  completed: { bg: '#dcfce7', text: '#166534' },
+  verified: { bg: '#dbeafe', text: '#1e40af' },
+  pending: { bg: '#fef9c3', text: '#854d0e' }
+};
+
 function SearchResults() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchType, setSearchType] = useState('name');
@@ -25,10 +31,10 @@ function SearchResults() {
 
     try {
       const response = await searchAPI.search(searchQuery, searchType, 1, 10);
-      setResults(response.data.data || []);
-      setTotalPages(Math.ceil((response.data.total || 0) / 10));
+      setResults(response.data.results || []);
+      setTotalPages(response.data.pages || 0);
     } catch (err) {
-      setError(err.response?.data?.message || 'Search failed');
+      setError(err.response?.data?.error || err.message || 'Search failed');
       setResults([]);
     } finally {
       setLoading(false);
@@ -41,10 +47,10 @@ function SearchResults() {
 
     try {
       const response = await searchAPI.search(searchQuery, searchType, nextPage, 10);
-      setResults(prev => [...prev, ...(response.data.data || [])]);
+      setResults(prev => [...prev, ...(response.data.results || [])]);
       setCurrentPage(nextPage);
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to load more results');
+      setError(err.response?.data?.error || err.message || 'Failed to load more results');
     } finally {
       setLoading(false);
     }
@@ -58,9 +64,10 @@ function SearchResults() {
   const handleDownloadPDF = (recordId) => {
     const link = document.createElement('a');
     link.href = `${process.env.REACT_APP_API_URL}/register/${recordId}/pdf`;
-    link.download = `registration-${recordId}.pdf`;
     link.click();
   };
+
+  const statusStyle = (status) => STATUS_COLORS[status] || { bg: '#f1f5f9', text: '#334155' };
 
   return (
     <div className="search-page">
@@ -79,6 +86,7 @@ function SearchResults() {
                 <option value="phone">Phone Number</option>
                 <option value="droneModel">Drone Model</option>
                 <option value="serialNumber">Serial Number</option>
+                <option value="idNumber">ID Number</option>
               </select>
             </div>
 
@@ -122,33 +130,36 @@ function SearchResults() {
                 </tr>
               </thead>
               <tbody>
-                {results.map(record => (
-                  <tr key={record._id} style={{ borderBottom: '1px solid #ddd' }}>
-                    <td style={{ padding: '12px' }}>{record.customerName}</td>
-                    <td style={{ padding: '12px' }}>{record.phoneNumber}</td>
-                    <td style={{ padding: '12px' }}>{record.droneModel}</td>
-                    <td style={{ padding: '12px' }}>{record.droneSerialNumber}</td>
-                    <td style={{ padding: '12px' }}>
-                      <span style={{
-                        backgroundColor: record.status === 'approved' ? '#dcfce7' : '#fee2e2',
-                        color: record.status === 'approved' ? '#166534' : '#7f1d1d',
-                        padding: '4px 8px',
-                        borderRadius: '4px',
-                        fontSize: '12px'
-                      }}>
-                        {record.status}
-                      </span>
-                    </td>
-                    <td style={{ padding: '12px', textAlign: 'center' }}>
-                      <button
-                        className="btn btn-small btn-primary"
-                        onClick={() => handleViewDetails(record)}
-                      >
-                        View
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {results.map(record => {
+                  const s = statusStyle(record.status);
+                  return (
+                    <tr key={record._id} style={{ borderBottom: '1px solid #ddd' }}>
+                      <td style={{ padding: '12px' }}>{record.customerName}</td>
+                      <td style={{ padding: '12px' }}>{record.phoneNumber}</td>
+                      <td style={{ padding: '12px' }}>{record.droneModel}</td>
+                      <td style={{ padding: '12px' }}>{record.droneSerialNumber}</td>
+                      <td style={{ padding: '12px' }}>
+                        <span style={{
+                          backgroundColor: s.bg,
+                          color: s.text,
+                          padding: '4px 8px',
+                          borderRadius: '4px',
+                          fontSize: '12px'
+                        }}>
+                          {record.status}
+                        </span>
+                      </td>
+                      <td style={{ padding: '12px', textAlign: 'center' }}>
+                        <button
+                          className="btn btn-small btn-primary"
+                          onClick={() => handleViewDetails(record)}
+                        >
+                          View
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -177,7 +188,7 @@ function SearchResults() {
             <div style={{ marginBottom: '20px' }}>
               <h4>Customer Information</h4>
               <p><strong>Name:</strong> {selectedRecord.customerName}</p>
-              <p><strong>ID:</strong> {selectedRecord.customerId}</p>
+              <p><strong>ID Number:</strong> {selectedRecord.idNumber}</p>
               <p><strong>Phone:</strong> {selectedRecord.phoneNumber}</p>
               <p><strong>ID Expiry:</strong> {new Date(selectedRecord.idExpiryDate).toLocaleDateString()}</p>
             </div>
@@ -188,22 +199,22 @@ function SearchResults() {
               <p><strong>Serial Number:</strong> {selectedRecord.droneSerialNumber}</p>
             </div>
 
-            {selectedRecord.idPhoto && (
+            {selectedRecord.idPhotoBase64 && (
               <div style={{ marginBottom: '20px' }}>
                 <h4>ID Card Photo</h4>
                 <img
-                  src={selectedRecord.idPhoto}
+                  src={`data:image/jpeg;base64,${selectedRecord.idPhotoBase64}`}
                   alt="ID Card"
                   style={{ maxWidth: '100%', maxHeight: '300px' }}
                 />
               </div>
             )}
 
-            {selectedRecord.droneBoxPhoto && (
+            {selectedRecord.dronePhotoBase64 && (
               <div style={{ marginBottom: '20px' }}>
                 <h4>Drone Box Photo</h4>
                 <img
-                  src={selectedRecord.droneBoxPhoto}
+                  src={`data:image/jpeg;base64,${selectedRecord.dronePhotoBase64}`}
                   alt="Drone Box"
                   style={{ maxWidth: '100%', maxHeight: '300px' }}
                 />

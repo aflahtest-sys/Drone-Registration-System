@@ -1,6 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { adminAPI } from '../utils/api';
 
+const STATUS_COLORS = {
+  completed: { bg: '#dcfce7', text: '#166534' },
+  verified: { bg: '#dbeafe', text: '#1e40af' },
+  pending: { bg: '#fef9c3', text: '#854d0e' }
+};
+
 function AdminDashboard() {
   const [stats, setStats] = useState(null);
   const [records, setRecords] = useState([]);
@@ -21,10 +27,10 @@ function AdminDashboard() {
         adminAPI.getRecords(currentPage, 20, statusFilter === 'all' ? null : statusFilter)
       ]);
 
-      setStats(statsRes.data);
-      setRecords(recordsRes.data.data || []);
+      setStats(statsRes.data.stats);
+      setRecords(recordsRes.data.records || []);
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to fetch data');
+      setError(err.response?.data?.error || err.message || 'Failed to fetch data');
     } finally {
       setLoading(false);
     }
@@ -71,6 +77,8 @@ function AdminDashboard() {
     setShowModal(true);
   };
 
+  const statusStyle = (status) => STATUS_COLORS[status] || { bg: '#f1f5f9', text: '#334155' };
+
   return (
     <div className="admin-dashboard">
       <h2 style={{ marginBottom: '30px', fontSize: '24px', fontWeight: 'bold' }}>Admin Dashboard</h2>
@@ -94,19 +102,37 @@ function AdminDashboard() {
 
           <div className="card" style={{ textAlign: 'center' }}>
             <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#16a34a' }}>
-              {stats.approvedCount || 0}
+              {stats.completedRegistrations || 0}
             </div>
             <div style={{ fontSize: '14px', color: '#666', marginTop: '10px' }}>
-              Approved
+              Completed
             </div>
           </div>
 
           <div className="card" style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#dc2626' }}>
-              {stats.pendingCount || 0}
+            <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#ea580c' }}>
+              {stats.pendingRegistrations || 0}
             </div>
             <div style={{ fontSize: '14px', color: '#666', marginTop: '10px' }}>
               Pending
+            </div>
+          </div>
+
+          <div className="card" style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#1e40af' }}>
+              {stats.verifiedRegistrations || 0}
+            </div>
+            <div style={{ fontSize: '14px', color: '#666', marginTop: '10px' }}>
+              Verified
+            </div>
+          </div>
+
+          <div className="card" style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#64748b' }}>
+              {stats.recentRegistrations || 0}
+            </div>
+            <div style={{ fontSize: '14px', color: '#666', marginTop: '10px' }}>
+              Last 7 Days
             </div>
           </div>
         </div>
@@ -128,8 +154,8 @@ function AdminDashboard() {
             >
               <option value="all">All</option>
               <option value="pending">Pending</option>
-              <option value="approved">Approved</option>
-              <option value="rejected">Rejected</option>
+              <option value="completed">Completed</option>
+              <option value="verified">Verified</option>
             </select>
           </div>
 
@@ -153,44 +179,49 @@ function AdminDashboard() {
                 </tr>
               </thead>
               <tbody>
-                {records.map(record => (
-                  <tr key={record._id} style={{ borderBottom: '1px solid #ddd' }}>
-                    <td style={{ padding: '12px' }}>{record.customerName}</td>
-                    <td style={{ padding: '12px' }}>{record.phoneNumber}</td>
-                    <td style={{ padding: '12px' }}>{record.droneModel}</td>
-                    <td style={{ padding: '12px' }}>
-                      <select
-                        value={record.status}
-                        onChange={(e) => handleStatusChange(record._id, e.target.value)}
-                        style={{
-                          padding: '6px',
-                          borderRadius: '4px',
-                          border: '1px solid #ddd',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        <option value="pending">Pending</option>
-                        <option value="approved">Approved</option>
-                        <option value="rejected">Rejected</option>
-                      </select>
-                    </td>
-                    <td style={{ padding: '12px', textAlign: 'center' }}>
-                      <button
-                        className="btn btn-small btn-primary"
-                        onClick={() => handleViewDetails(record)}
-                        style={{ marginRight: '5px' }}
-                      >
-                        View
-                      </button>
-                      <button
-                        className="btn btn-small btn-danger"
-                        onClick={() => handleDelete(record._id)}
-                      >
-                        Delete
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {records.map(record => {
+                  const s = statusStyle(record.status);
+                  return (
+                    <tr key={record._id} style={{ borderBottom: '1px solid #ddd' }}>
+                      <td style={{ padding: '12px' }}>{record.customerName}</td>
+                      <td style={{ padding: '12px' }}>{record.phoneNumber}</td>
+                      <td style={{ padding: '12px' }}>{record.droneModel}</td>
+                      <td style={{ padding: '12px' }}>
+                        <select
+                          value={record.status}
+                          onChange={(e) => handleStatusChange(record._id, e.target.value)}
+                          style={{
+                            padding: '6px',
+                            borderRadius: '4px',
+                            border: '1px solid #ddd',
+                            cursor: 'pointer',
+                            backgroundColor: s.bg,
+                            color: s.text
+                          }}
+                        >
+                          <option value="pending">Pending</option>
+                          <option value="completed">Completed</option>
+                          <option value="verified">Verified</option>
+                        </select>
+                      </td>
+                      <td style={{ padding: '12px', textAlign: 'center' }}>
+                        <button
+                          className="btn btn-small btn-primary"
+                          onClick={() => handleViewDetails(record)}
+                          style={{ marginRight: '5px' }}
+                        >
+                          View
+                        </button>
+                        <button
+                          className="btn btn-small btn-danger"
+                          onClick={() => handleDelete(record._id)}
+                        >
+                          Delete
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -209,7 +240,7 @@ function AdminDashboard() {
             <div style={{ marginBottom: '20px' }}>
               <h4>Customer Information</h4>
               <p><strong>Name:</strong> {selectedRecord.customerName}</p>
-              <p><strong>ID:</strong> {selectedRecord.customerId}</p>
+              <p><strong>ID Number:</strong> {selectedRecord.idNumber}</p>
               <p><strong>Phone:</strong> {selectedRecord.phoneNumber}</p>
               <p><strong>ID Expiry:</strong> {new Date(selectedRecord.idExpiryDate).toLocaleDateString()}</p>
             </div>
@@ -220,22 +251,22 @@ function AdminDashboard() {
               <p><strong>Serial Number:</strong> {selectedRecord.droneSerialNumber}</p>
             </div>
 
-            {selectedRecord.idPhoto && (
+            {selectedRecord.idPhotoBase64 && (
               <div style={{ marginBottom: '20px' }}>
                 <h4>ID Card Photo</h4>
                 <img
-                  src={selectedRecord.idPhoto}
+                  src={`data:image/jpeg;base64,${selectedRecord.idPhotoBase64}`}
                   alt="ID Card"
                   style={{ maxWidth: '100%', maxHeight: '300px' }}
                 />
               </div>
             )}
 
-            {selectedRecord.droneBoxPhoto && (
+            {selectedRecord.dronePhotoBase64 && (
               <div style={{ marginBottom: '20px' }}>
                 <h4>Drone Box Photo</h4>
                 <img
-                  src={selectedRecord.droneBoxPhoto}
+                  src={`data:image/jpeg;base64,${selectedRecord.dronePhotoBase64}`}
                   alt="Drone Box"
                   style={{ maxWidth: '100%', maxHeight: '300px' }}
                 />

@@ -87,6 +87,25 @@ router.post('/submit', upload.fields([
   }
 });
 
+// Generate & download the PDF certificate on demand. This rebuilds the PDF
+// fresh from the data stored in MongoDB every time, so it still works even
+// after the server restarts and any previously-generated file on disk is gone
+// (Render's free tier disk is wiped on every restart/redeploy).
+router.get('/:id/pdf', async (req, res) => {
+  try {
+    const registration = await Registration.findById(req.params.id);
+    if (!registration) {
+      return res.status(404).json({ error: 'Registration not found' });
+    }
+
+    const pdfPath = await generatePDF(registration);
+    res.download(pdfPath, `registration-${registration._id}.pdf`);
+  } catch (error) {
+    console.error('PDF generation error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get registration by ID
 router.get('/:id', async (req, res) => {
   try {

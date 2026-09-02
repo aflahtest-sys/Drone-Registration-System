@@ -3,6 +3,8 @@ import CameraCapture from '../components/CameraCapture';
 import OCRProcessor from '../components/OCRProcessor';
 import { registerAPI } from '../utils/api';
 
+const toRawBase64 = (dataUrl) => (dataUrl ? dataUrl.split(',')[1] : '');
+
 function RegisterPage() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -10,7 +12,7 @@ function RegisterPage() {
   const [formData, setFormData] = useState({
     // Customer info
     customerName: '',
-    customerId: '',
+    idNumber: '',
     idExpiryDate: '',
     phoneNumber: '',
     idPhoto: null,
@@ -18,12 +20,10 @@ function RegisterPage() {
     // Drone info
     droneModel: '',
     droneSerialNumber: '',
-    droneBoxPhoto: null,
-    droneBoxPhotoPreview: '',
-    // OCR extracted data
-    extractedName: '',
-    extractedId: '',
-    extractedExpiryDate: '',
+    dronePhoto: null,
+    dronePhotoPreview: '',
+    // OCR extracted data (matches backend's extractedIdData shape)
+    extractedIdData: null,
   });
 
   const handleInputChange = (e) => {
@@ -44,8 +44,8 @@ function RegisterPage() {
     } else if (type === 'drone') {
       setFormData(prev => ({
         ...prev,
-        droneBoxPhoto: photoData,
-        droneBoxPhotoPreview: photoData
+        dronePhoto: photoData,
+        dronePhotoPreview: photoData
       }));
     }
   };
@@ -53,12 +53,15 @@ function RegisterPage() {
   const handleOCRExtraction = (extractedData) => {
     setFormData(prev => ({
       ...prev,
-      extractedName: extractedData.name || '',
-      extractedId: extractedData.id || '',
-      extractedExpiryDate: extractedData.expiryDate || '',
+      extractedIdData: {
+        name: extractedData.name || '',
+        idNumber: extractedData.id || '',
+        expiryDate: extractedData.expiryDate || '',
+        extractionConfidence: extractedData.confidence || 0
+      },
       // Auto-fill the visible fields too, if they're still empty
       customerName: prev.customerName || extractedData.name || '',
-      customerId: prev.customerId || extractedData.id || ''
+      idNumber: prev.idNumber || extractedData.id || ''
     }));
   };
 
@@ -71,7 +74,7 @@ function RegisterPage() {
       setMessage('Please enter customer name');
       return false;
     }
-    if (!formData.customerId.trim()) {
+    if (!formData.idNumber.trim()) {
       setMessage('Please enter ID number');
       return false;
     }
@@ -87,7 +90,7 @@ function RegisterPage() {
   };
 
   const validateStep2 = () => {
-    if (!formData.droneBoxPhoto) {
+    if (!formData.dronePhoto) {
       setMessage('Please capture the drone box photo first');
       return false;
     }
@@ -102,6 +105,16 @@ function RegisterPage() {
     return true;
   };
 
+  const extractErrorMessage = (error) => {
+    const data = error.response?.data;
+    if (!data) return error.message;
+    if (data.error) return data.error;
+    if (Array.isArray(data.errors) && data.errors.length > 0) {
+      return data.errors.map(e => e.msg).join(', ');
+    }
+    return error.message;
+  };
+
   const handleSubmit = async () => {
     if (!validateStep2()) return;
 
@@ -111,50 +124,53 @@ function RegisterPage() {
     try {
       const submitData = new FormData();
       submitData.append('customerName', formData.customerName);
-      submitData.append('customerId', formData.customerId);
+      submitData.append('idNumber', formData.idNumber);
       submitData.append('idExpiryDate', formData.idExpiryDate);
       submitData.append('phoneNumber', formData.phoneNumber);
       submitData.append('droneModel', formData.droneModel);
       submitData.append('droneSerialNumber', formData.droneSerialNumber);
-      submitData.append('extractedName', formData.extractedName);
-      submitData.append('extractedId', formData.extractedId);
-      submitData.append('extractedExpiryDate', formData.extractedExpiryDate);
 
-      // Convert base64 to blob
+      if (formData.extractedIdData) {
+        submitData.append('extractedIdData', JSON.stringify(formData.extractedIdData));
+      }
+
+      // Send raw base64 too (no data: prefix) so the backend can store it in
+      // MongoDB and embed it in the PDF certificate later.
       if (formData.idPhoto) {
+        submitData.append('idPhotoBase64', toRawBase64(formData.idPhoto));
         const idBlob = await fetch(formData.idPhoto).then(r => r.blob());
         submitData.append('idPhoto', idBlob, 'id-photo.jpg');
       }
 
-      if (formData.droneBoxPhoto) {
-        const droneBlob = await fetch(formData.droneBoxPhoto).then(r => r.blob());
-        submitData.append('droneBoxPhoto', droneBlob, 'drone-box-photo.jpg');
+      if (formData.dronePhoto) {
+        submitData.append('dronePhotoBase64', toRawBase64(formData.dronePhoto));
+        const droneBlob = await fetch(formData.dronePhoto).then(r => r.blob());
+        submitData.append('dronePhoto', droneBlob, 'drone-photo.jpg');
       }
 
       const response = await registerAPI.submit(submitData);
-      setMessage(`✅ Registration successful! ID: ${response.data._id}`);
+      setMessage(`✅ Registration successful! ID: ${response.data.registrationId}`);
 
       // Reset form
       setTimeout(() => {
         setFormData({
           customerName: '',
-          customerId: '',
+          idNumber: '',
           idExpiryDate: '',
           phoneNumber: '',
           idPhoto: null,
           idPhotoPreview: '',
           droneModel: '',
           droneSerialNumber: '',
-          droneBoxPhoto: null,
-          droneBoxPhotoPreview: '',
-          extractedName: '',
-          extractedId: '',
-          extractedExpiryDate: '',
+          dronePhoto: null,
+          dronePhotoPreview: '',
+          extractedIdData: null,
         });
         setStep(1);
-      }, 2000);
+        setMessage('');
+      }, 2500);
     } catch (error) {
-      setMessage(`❌ Error: ${error.response?.data?.message || error.message}`);
+      setMessage(`❌ Error: ${extractErrorMessage(error)}`);
     } finally {
       setLoading(false);
     }
@@ -206,8 +222,8 @@ function RegisterPage() {
             <label>ID Number</label>
             <input
               type="text"
-              name="customerId"
-              value={formData.customerId}
+              name="idNumber"
+              value={formData.idNumber}
               onChange={handleInputChange}
               placeholder="Enter ID number"
             />
@@ -250,7 +266,7 @@ function RegisterPage() {
             <CameraCapture
               type="drone"
               onPhotoCapture={handlePhotoCapture}
-              photoPreview={formData.droneBoxPhotoPreview}
+              photoPreview={formData.dronePhotoPreview}
             />
           </div>
 
