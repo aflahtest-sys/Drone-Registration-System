@@ -55,11 +55,18 @@ function RegisterPage() {
       ...prev,
       extractedName: extractedData.name || '',
       extractedId: extractedData.id || '',
-      extractedExpiryDate: extractedData.expiryDate || ''
+      extractedExpiryDate: extractedData.expiryDate || '',
+      // Auto-fill the visible fields too, if they're still empty
+      customerName: prev.customerName || extractedData.name || '',
+      customerId: prev.customerId || extractedData.id || ''
     }));
   };
 
   const validateStep1 = () => {
+    if (!formData.idPhoto) {
+      setMessage('Please capture the ID card photo first');
+      return false;
+    }
     if (!formData.customerName.trim()) {
       setMessage('Please enter customer name');
       return false;
@@ -76,24 +83,20 @@ function RegisterPage() {
       setMessage('Please enter phone number');
       return false;
     }
-    if (!formData.idPhoto) {
-      setMessage('Please capture ID photo');
-      return false;
-    }
     return true;
   };
 
   const validateStep2 = () => {
+    if (!formData.droneBoxPhoto) {
+      setMessage('Please capture the drone box photo first');
+      return false;
+    }
     if (!formData.droneModel.trim()) {
       setMessage('Please enter drone model');
       return false;
     }
     if (!formData.droneSerialNumber.trim()) {
       setMessage('Please enter drone serial number');
-      return false;
-    }
-    if (!formData.droneBoxPhoto) {
-      setMessage('Please capture drone box photo');
       return false;
     }
     return true;
@@ -170,6 +173,25 @@ function RegisterPage() {
           <h2 className="card-title">Step 1: Customer Information</h2>
 
           <div className="form-group">
+            <label>ID Card Photo</label>
+            <CameraCapture
+              type="id"
+              onPhotoCapture={handlePhotoCapture}
+              photoPreview={formData.idPhotoPreview}
+            />
+          </div>
+
+          {formData.idPhoto && (
+            <div className="form-group">
+              <label>Extract Text from ID Card (Optional)</label>
+              <OCRProcessor
+                photo={formData.idPhoto}
+                onExtraction={handleOCRExtraction}
+              />
+            </div>
+          )}
+
+          <div className="form-group">
             <label>Full Name</label>
             <input
               type="text"
@@ -212,25 +234,6 @@ function RegisterPage() {
             />
           </div>
 
-          <div className="form-group">
-            <label>ID Card Photo</label>
-            <CameraCapture
-              type="id"
-              onPhotoCapture={handlePhotoCapture}
-              photoPreview={formData.idPhotoPreview}
-            />
-          </div>
-
-          {formData.idPhoto && (
-            <div className="form-group">
-              <label>Extract Text from ID Card (Optional)</label>
-              <OCRProcessor
-                photo={formData.idPhoto}
-                onExtraction={handleOCRExtraction}
-              />
-            </div>
-          )}
-
           <button
             className="btn btn-primary"
             onClick={() => validateStep1() && setStep(2)}
@@ -241,6 +244,15 @@ function RegisterPage() {
       ) : (
         <div className="card">
           <h2 className="card-title">Step 2: Drone Information</h2>
+
+          <div className="form-group">
+            <label>Drone Box Photo</label>
+            <CameraCapture
+              type="drone"
+              onPhotoCapture={handlePhotoCapture}
+              photoPreview={formData.droneBoxPhotoPreview}
+            />
+          </div>
 
           <div className="form-group">
             <label>Drone Model</label>
@@ -261,15 +273,6 @@ function RegisterPage() {
               value={formData.droneSerialNumber}
               onChange={handleInputChange}
               placeholder="Enter serial number"
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Drone Box Photo</label>
-            <CameraCapture
-              type="drone"
-              onPhotoCapture={handlePhotoCapture}
-              photoPreview={formData.droneBoxPhotoPreview}
             />
           </div>
 

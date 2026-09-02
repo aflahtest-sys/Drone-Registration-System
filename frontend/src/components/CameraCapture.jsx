@@ -1,24 +1,46 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 
 function CameraCapture({ type, onPhotoCapture, photoPreview }) {
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [error, setError] = useState('');
+  const [stream, setStream] = useState(null);
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
+
+  // Attach the stream to the video element once it exists and is mounted
+  useEffect(() => {
+    if (stream && videoRef.current) {
+      videoRef.current.srcObject = stream;
+    }
+  }, [stream, isCameraActive]);
+
+  // Make sure the camera is released if the component unmounts
+  useEffect(() => {
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const startCamera = async () => {
     try {
       setError('');
-      const stream = await navigator.mediaDevices.getUserMedia({
+
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        setError('Camera is not supported in this browser.');
+        return;
+      }
+
+      const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'environment' }
       });
 
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        setIsCameraActive(true);
-      }
+      setStream(mediaStream);
+      setIsCameraActive(true);
     } catch (err) {
-      setError('Cannot access camera. Please check permissions.');
+      setError('Cannot access camera. Please allow camera permission and make sure you are on a secure (https) page.');
     }
   };
 
@@ -39,10 +61,11 @@ function CameraCapture({ type, onPhotoCapture, photoPreview }) {
   };
 
   const stopCamera = () => {
-    if (videoRef.current && videoRef.current.srcObject) {
-      videoRef.current.srcObject.getTracks().forEach(track => track.stop());
-      setIsCameraActive(false);
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+      setStream(null);
     }
+    setIsCameraActive(false);
   };
 
   const handleRetake = () => {
@@ -54,17 +77,29 @@ function CameraCapture({ type, onPhotoCapture, photoPreview }) {
     <div style={{ marginBottom: '20px' }}>
       {!photoPreview ? (
         <div>
-          {isCameraActive ? (
+          {!isCameraActive && (
+            <button
+              className="btn btn-primary"
+              onClick={startCamera}
+              style={{ width: '100%' }}
+            >
+              📷 Open Camera
+            </button>
+          )}
+
+          {isCameraActive && (
             <div style={{ textAlign: 'center' }}>
               <video
                 ref={videoRef}
                 autoPlay
                 playsInline
+                muted
                 style={{
                   width: '100%',
                   maxWidth: '100%',
                   borderRadius: '5px',
-                  marginBottom: '10px'
+                  marginBottom: '10px',
+                  backgroundColor: '#000'
                 }}
               />
               <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
@@ -82,14 +117,6 @@ function CameraCapture({ type, onPhotoCapture, photoPreview }) {
                 </button>
               </div>
             </div>
-          ) : (
-            <button
-              className="btn btn-primary"
-              onClick={startCamera}
-              style={{ width: '100%' }}
-            >
-              📷 Open Camera
-            </button>
           )}
 
           {error && (
