@@ -241,6 +241,7 @@ function AdminDashboard() {
               <h4>Customer Information</h4>
               <p><strong>Name:</strong> {selectedRecord.customerName}</p>
               <p><strong>ID Number:</strong> {selectedRecord.idNumber}</p>
+              <p><strong>Email:</strong> {selectedRecord.email}</p>
               <p><strong>Phone:</strong> {selectedRecord.phoneNumber}</p>
               <p><strong>ID Expiry:</strong> {new Date(selectedRecord.idExpiryDate).toLocaleDateString()}</p>
             </div>

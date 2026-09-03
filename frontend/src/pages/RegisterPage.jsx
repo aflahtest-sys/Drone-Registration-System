@@ -4,27 +4,30 @@ import OCRProcessor from '../components/OCRProcessor';
 import { registerAPI } from '../utils/api';
 
 const toRawBase64 = (dataUrl) => (dataUrl ? dataUrl.split(',')[1] : '');
+const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+const emptyFormData = {
+  customerName: '',
+  idNumber: '',
+  idExpiryDate: '',
+  email: '',
+  phoneNumber: '',
+  idPhoto: null,
+  idPhotoPreview: '',
+  droneModel: '',
+  droneSerialNumber: '',
+  dronePhoto: null,
+  dronePhotoPreview: '',
+  extractedIdData: null,
+};
 
 function RegisterPage() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState('');
-  const [formData, setFormData] = useState({
-    // Customer info
-    customerName: '',
-    idNumber: '',
-    idExpiryDate: '',
-    phoneNumber: '',
-    idPhoto: null,
-    idPhotoPreview: '',
-    // Drone info
-    droneModel: '',
-    droneSerialNumber: '',
-    dronePhoto: null,
-    dronePhotoPreview: '',
-    // OCR extracted data (matches backend's extractedIdData shape)
-    extractedIdData: null,
-  });
+  const [step1Error, setStep1Error] = useState('');
+  const [step2Error, setStep2Error] = useState('');
+  const [formData, setFormData] = useState(emptyFormData);
+  const [successInfo, setSuccessInfo] = useState(null);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -67,41 +70,51 @@ function RegisterPage() {
 
   const validateStep1 = () => {
     if (!formData.idPhoto) {
-      setMessage('Please capture the ID card photo first');
+      setStep1Error('Please capture the ID card photo first.');
       return false;
     }
     if (!formData.customerName.trim()) {
-      setMessage('Please enter customer name');
+      setStep1Error('Please enter the customer name.');
       return false;
     }
     if (!formData.idNumber.trim()) {
-      setMessage('Please enter ID number');
+      setStep1Error('Please enter the ID number.');
       return false;
     }
     if (!formData.idExpiryDate) {
-      setMessage('Please select ID expiry date');
+      setStep1Error('Please select the ID expiry date.');
+      return false;
+    }
+    if (!formData.email.trim()) {
+      setStep1Error('Please enter an email address.');
+      return false;
+    }
+    if (!isValidEmail(formData.email.trim())) {
+      setStep1Error('Please enter a valid email address.');
       return false;
     }
     if (!formData.phoneNumber.trim()) {
-      setMessage('Please enter phone number');
+      setStep1Error('Please enter a phone number.');
       return false;
     }
+    setStep1Error('');
     return true;
   };
 
   const validateStep2 = () => {
     if (!formData.dronePhoto) {
-      setMessage('Please capture the drone box photo first');
+      setStep2Error('Please capture the drone box photo first.');
       return false;
     }
     if (!formData.droneModel.trim()) {
-      setMessage('Please enter drone model');
+      setStep2Error('Please enter the drone model.');
       return false;
     }
     if (!formData.droneSerialNumber.trim()) {
-      setMessage('Please enter drone serial number');
+      setStep2Error('Please enter the drone serial number.');
       return false;
     }
+    setStep2Error('');
     return true;
   };
 
@@ -119,13 +132,14 @@ function RegisterPage() {
     if (!validateStep2()) return;
 
     setLoading(true);
-    setMessage('');
+    setStep2Error('');
 
     try {
       const submitData = new FormData();
       submitData.append('customerName', formData.customerName);
       submitData.append('idNumber', formData.idNumber);
       submitData.append('idExpiryDate', formData.idExpiryDate);
+      submitData.append('email', formData.email.trim());
       submitData.append('phoneNumber', formData.phoneNumber);
       submitData.append('droneModel', formData.droneModel);
       submitData.append('droneSerialNumber', formData.droneSerialNumber);
@@ -149,41 +163,72 @@ function RegisterPage() {
       }
 
       const response = await registerAPI.submit(submitData);
-      setMessage(`✅ Registration successful! ID: ${response.data.registrationId}`);
 
-      // Reset form
-      setTimeout(() => {
-        setFormData({
-          customerName: '',
-          idNumber: '',
-          idExpiryDate: '',
-          phoneNumber: '',
-          idPhoto: null,
-          idPhotoPreview: '',
-          droneModel: '',
-          droneSerialNumber: '',
-          dronePhoto: null,
-          dronePhotoPreview: '',
-          extractedIdData: null,
-        });
-        setStep(1);
-        setMessage('');
-      }, 2500);
+      // Show a clear, dedicated success screen instead of a small banner.
+      setSuccessInfo({
+        registrationId: response.data.registrationId,
+        customerName: formData.customerName,
+        email: formData.email,
+        droneModel: formData.droneModel,
+        droneSerialNumber: formData.droneSerialNumber
+      });
     } catch (error) {
-      setMessage(`❌ Error: ${extractErrorMessage(error)}`);
+      setStep2Error(extractErrorMessage(error));
     } finally {
       setLoading(false);
     }
   };
 
+  const handleRegisterAnother = () => {
+    setFormData(emptyFormData);
+    setStep1Error('');
+    setStep2Error('');
+    setSuccessInfo(null);
+    setStep(1);
+  };
+
+  // ---- Success screen ----
+  if (successInfo) {
+    return (
+      <div className="register-page">
+        <div className="card" style={{ textAlign: 'center', border: '2px solid #16a34a' }}>
+          <div style={{ fontSize: '64px', lineHeight: 1, marginBottom: '10px' }}>✅</div>
+          <h2 style={{ color: '#16a34a', marginBottom: '10px', fontSize: '24px' }}>
+            Registration Successful!
+          </h2>
+          <p style={{ marginBottom: '20px', color: '#334155', fontSize: '16px' }}>
+            Thank you, <strong>{successInfo.customerName}</strong>. Your drone has been
+            registered successfully.
+          </p>
+
+          <div style={{
+            backgroundColor: '#f0fdf4',
+            border: '1px solid #bbf7d0',
+            borderRadius: '8px',
+            padding: '20px',
+            marginBottom: '24px',
+            textAlign: 'left'
+          }}>
+            <p style={{ marginBottom: '8px' }}><strong>Registration ID:</strong> {successInfo.registrationId}</p>
+            <p style={{ marginBottom: '8px' }}><strong>Drone Model:</strong> {successInfo.droneModel}</p>
+            <p style={{ marginBottom: '8px' }}><strong>Serial Number:</strong> {successInfo.droneSerialNumber}</p>
+            <p><strong>Confirmation sent to:</strong> {successInfo.email}</p>
+          </div>
+
+          <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '20px' }}>
+            Please keep your Registration ID for your records.
+          </p>
+
+          <button className="btn btn-primary" onClick={handleRegisterAnother}>
+            Register Another Drone
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="register-page">
-      {message && (
-        <div className={`alert ${message.includes('✅') ? 'alert-success' : 'alert-error'}`}>
-          {message}
-        </div>
-      )}
-
       {step === 1 ? (
         <div className="card">
           <h2 className="card-title">Step 1: Customer Information</h2>
@@ -240,6 +285,17 @@ function RegisterPage() {
           </div>
 
           <div className="form-group">
+            <label>Email Address</label>
+            <input
+              type="email"
+              name="email"
+              value={formData.email}
+              onChange={handleInputChange}
+              placeholder="Enter email address"
+            />
+          </div>
+
+          <div className="form-group">
             <label>Phone Number</label>
             <input
               type="tel"
@@ -256,6 +312,12 @@ function RegisterPage() {
           >
             Next: Drone Information →
           </button>
+
+          {step1Error && (
+            <div className="alert alert-error" style={{ marginTop: '15px', marginBottom: 0 }}>
+              {step1Error}
+            </div>
+          )}
         </div>
       ) : (
         <div className="card">
@@ -296,6 +358,7 @@ function RegisterPage() {
             <button
               className="btn btn-secondary"
               onClick={() => setStep(1)}
+              disabled={loading}
             >
               ← Back
             </button>
@@ -307,6 +370,12 @@ function RegisterPage() {
               {loading ? 'Submitting...' : 'Submit Registration'}
             </button>
           </div>
+
+          {step2Error && (
+            <div className="alert alert-error" style={{ marginTop: '15px', marginBottom: 0 }}>
+              {step2Error}
+            </div>
+          )}
         </div>
       )}
     </div>

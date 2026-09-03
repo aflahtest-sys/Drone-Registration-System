@@ -21,7 +21,7 @@ function SearchResults() {
   const handleSearch = async (e) => {
     e.preventDefault();
     if (!searchQuery.trim()) {
-      setError('Please enter a search query');
+      setError('Please enter a search query.');
       return;
     }
 
@@ -104,14 +104,14 @@ function SearchResults() {
           <button type="submit" className="btn btn-primary" disabled={loading}>
             {loading ? 'Searching...' : 'Search'}
           </button>
+
+          {error && (
+            <div className="alert alert-error" style={{ marginTop: '15px', marginBottom: 0 }}>
+              {error}
+            </div>
+          )}
         </form>
       </div>
-
-      {error && (
-        <div className="alert alert-error">
-          {error}
-        </div>
-      )}
 
       {results.length > 0 && (
         <div className="card">
@@ -122,6 +122,7 @@ function SearchResults() {
               <thead>
                 <tr style={{ backgroundColor: '#f0f0f0', borderBottom: '2px solid #ddd' }}>
                   <th style={{ padding: '12px', textAlign: 'left' }}>Name</th>
+                  <th style={{ padding: '12px', textAlign: 'left' }}>Email</th>
                   <th style={{ padding: '12px', textAlign: 'left' }}>Phone</th>
                   <th style={{ padding: '12px', textAlign: 'left' }}>Drone Model</th>
                   <th style={{ padding: '12px', textAlign: 'left' }}>Serial Number</th>
@@ -135,6 +136,7 @@ function SearchResults() {
                   return (
                     <tr key={record._id} style={{ borderBottom: '1px solid #ddd' }}>
                       <td style={{ padding: '12px' }}>{record.customerName}</td>
+                      <td style={{ padding: '12px' }}>{record.email}</td>
                       <td style={{ padding: '12px' }}>{record.phoneNumber}</td>
                       <td style={{ padding: '12px' }}>{record.droneModel}</td>
                       <td style={{ padding: '12px' }}>{record.droneSerialNumber}</td>
@@ -189,6 +191,7 @@ function SearchResults() {
               <h4>Customer Information</h4>
               <p><strong>Name:</strong> {selectedRecord.customerName}</p>
               <p><strong>ID Number:</strong> {selectedRecord.idNumber}</p>
+              <p><strong>Email:</strong> {selectedRecord.email}</p>
               <p><strong>Phone:</strong> {selectedRecord.phoneNumber}</p>
               <p><strong>ID Expiry:</strong> {new Date(selectedRecord.idExpiryDate).toLocaleDateString()}</p>
             </div>

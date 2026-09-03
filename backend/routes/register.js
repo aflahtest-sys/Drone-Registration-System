@@ -15,6 +15,7 @@ router.post('/submit', upload.fields([
   body('customerName').notEmpty().trim(),
   body('idNumber').notEmpty().trim(),
   body('idExpiryDate').isISO8601(),
+  body('email').isEmail().withMessage('A valid email address is required').normalizeEmail(),
   body('droneModel').notEmpty().trim(),
   body('droneSerialNumber').notEmpty().trim(),
   body('phoneNumber').optional().isMobilePhone()
@@ -30,6 +31,7 @@ router.post('/submit', upload.fields([
       customerName,
       idNumber,
       idExpiryDate,
+      email,
       phoneNumber,
       droneModel,
       droneSerialNumber,
@@ -55,6 +57,7 @@ router.post('/submit', upload.fields([
       customerName,
       idNumber,
       idExpiryDate: new Date(idExpiryDate),
+      email,
       phoneNumber,
       droneModel,
       droneSerialNumber,

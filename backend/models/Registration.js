@@ -20,6 +20,13 @@ const RegistrationSchema = new mongoose.Schema({
     type: String,
     index: true
   },
+  email: {
+    type: String,
+    required: true,
+    trim: true,
+    lowercase: true,
+    index: true
+  },
 
   // Drone Information
   droneModel: {
